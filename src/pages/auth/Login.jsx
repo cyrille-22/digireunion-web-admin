@@ -11,20 +11,25 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const { login }             = useAuthStore();
   const navigate              = useNavigate();
+  const [otpVisible, setOtpVisible] = useState(null);
 
-  const handleRequestOTP = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      await requestOTP(telephone);
-      toast.success('Code OTP envoyé !');
-      setStep(2);
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Erreur');
-    } finally {
-      setLoading(false);
+ const handleRequestOTP = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+  try {
+    const res = await requestOTP(telephone);
+    // Afficher le code OTP directement si renvoyé
+    if (res.data.code_otp) {
+      setOtpVisible(res.data.code_otp);
     }
-  };
+    toast.success('Code OTP généré !');
+    setStep(2);
+  } catch (err) {
+    toast.error(err.response?.data?.message || 'Erreur');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleVerifyOTP = async (e) => {
     e.preventDefault();
@@ -204,7 +209,22 @@ export default function Login() {
                     </span>
                   </p>
                 </div>
-
+                {/* Affichage temporaire du code OTP */}
+                {otpVisible && (
+                  <div className="bg-amber-900/20 border border-amber-800/30
+                    rounded-2xl p-4 mb-4 text-center">
+                    <p className="text-xs text-amber-400 mb-1">
+                      🔐 Code OTP (mode test)
+                    </p>
+                    <p className="text-4xl font-mono font-bold text-white
+                      tracking-widest">
+                      {otpVisible}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Copiez ce code ci-dessous
+                    </p>
+                  </div>
+                )}
                 <form onSubmit={handleVerifyOTP}>
                   <div className="mb-5">
                     <label className="block text-sm text-gray-400
