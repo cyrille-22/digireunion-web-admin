@@ -9,8 +9,40 @@ import Members from './pages/members/Members';
 import Tontines from './pages/tontines/Tontines';
 import Seances from './pages/seances/Seances';
 import Settings from './pages/settings/Settings';
+import MonEspace from './pages/membre/MonEspace';
+import useAuthStore, { isMembre } from './store/authStore';
 
 const queryClient = new QueryClient();
+
+function AppRoutes() {
+  const { membre } = useAuthStore();
+  const role = membre?.role || 'membre';
+
+  return (
+    <Routes>
+      <Route path="/welcome" element={<Welcome />} />
+      <Route path="/login"   element={<Login />} />
+      <Route element={<Layout />}>
+        {/* Routes selon le rôle */}
+        {isMembre(role) ? (
+          <>
+            <Route path="/"              element={<MonEspace />} />
+            <Route path="/mes-finances"  element={<MonEspace />} />
+            <Route path="/seances"       element={<Seances />} />
+          </>
+        ) : (
+          <>
+            <Route path="/"          element={<Dashboard />} />
+            <Route path="/members"   element={<Members />} />
+            <Route path="/tontines"  element={<Tontines />} />
+            <Route path="/seances"   element={<Seances />} />
+            <Route path="/settings"  element={<Settings />} />
+          </>
+        )}
+      </Route>
+    </Routes>
+  );
+}
 
 export default function App() {
   return (
@@ -24,17 +56,7 @@ export default function App() {
               border:     '1px solid #2e3a50'
             }
           }} />
-        <Routes>
-          <Route path="/welcome" element={<Welcome />} />
-          <Route path="/login"   element={<Login />} />
-          <Route element={<Layout />}>
-            <Route path="/"         element={<Dashboard />} />
-            <Route path="/members"  element={<Members />} />
-            <Route path="/tontines" element={<Tontines />} />
-            <Route path="/seances"  element={<Seances />} />
-            <Route path="/settings" element={<Settings />} />
-          </Route>
-        </Routes>
+        <AppRoutes />
       </BrowserRouter>
     </QueryClientProvider>
   );
