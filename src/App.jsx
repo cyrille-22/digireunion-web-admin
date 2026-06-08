@@ -10,33 +10,35 @@ import Tontines from './pages/tontines/Tontines';
 import Seances from './pages/seances/Seances';
 import Settings from './pages/settings/Settings';
 import MonEspace from './pages/membre/MonEspace';
-import useAuthStore, { isMembre } from './store/authStore';
+import MesSeances from './pages/membre/MesSeances';
+import useAuthStore from './store/authStore';
 
 const queryClient = new QueryClient();
 
 function AppRoutes() {
   const { membre } = useAuthStore();
   const role = membre?.role || 'membre';
+  const isMembre = role === 'membre';
 
   return (
     <Routes>
       <Route path="/welcome" element={<Welcome />} />
       <Route path="/login"   element={<Login />} />
       <Route element={<Layout />}>
-        {/* Routes selon le rôle */}
-        {isMembre(role) ? (
+        {isMembre ? (
+          // ── ESPACE MEMBRE ──────────────────────────────────
           <>
-            <Route path="/"              element={<MonEspace />} />
-            <Route path="/mes-finances"  element={<MonEspace />} />
-            <Route path="/seances"       element={<Seances />} />
+            <Route path="/"         element={<MonEspace />} />
+            <Route path="/seances"  element={<MesSeances />} />
           </>
         ) : (
+          // ── ESPACE BUREAU ──────────────────────────────────
           <>
-            <Route path="/"          element={<Dashboard />} />
-            <Route path="/members"   element={<Members />} />
-            <Route path="/tontines"  element={<Tontines />} />
-            <Route path="/seances"   element={<Seances />} />
-            <Route path="/settings"  element={<Settings />} />
+            <Route path="/"         element={<Dashboard />} />
+            <Route path="/members"  element={<Members />} />
+            <Route path="/tontines" element={<Tontines />} />
+            <Route path="/seances"  element={<Seances />} />
+            <Route path="/settings" element={<Settings />} />
           </>
         )}
       </Route>
