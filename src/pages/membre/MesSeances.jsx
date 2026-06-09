@@ -8,6 +8,29 @@ const getHistorique = (page) =>
 const getBilan = (id) =>
   api.get(`/cotisations/bilan/${id}`).then(r => r.data);
 
+const telechargerPV = async (seanceId, numero) => {
+  try {
+    const token   = localStorage.getItem('token');
+    const baseURL = import.meta.env.VITE_API_URL || '';
+    const url     = `${baseURL}/api/v1/pv/${seanceId}`;
+
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    const blob    = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a       = document.createElement('a');
+    a.href        = blobUrl;
+    a.download    = `PV_Seance_${numero}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(blobUrl);
+  } catch {
+    toast.error('Erreur téléchargement');
+  }
+};
 function DetailSeanceModal({ seanceId, onClose }) {
   const { data: bilan, isLoading } = useQuery({
     queryKey: ['bilan', seanceId],

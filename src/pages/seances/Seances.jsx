@@ -44,6 +44,45 @@ const preparerBouffer = (seanceId, tontineId, memberId) =>
     .then(r => r.data);
 const confirmerBouffer = (data) =>
   api.post('/bouffer/confirmer', data);
+// ── TÉLÉCHARGEMENT PV PDF ─────────────────────────────────────
+const telechargerPV = async (seanceId, numeroSeance) => {
+  try {
+    toast.loading('Génération du PDF...');
+    const token   = localStorage.getItem('token');
+    const baseURL = import.meta.env.VITE_API_URL
+      ? import.meta.env.VITE_API_URL
+      : '';
+    const url = `${baseURL}/api/v1/pv/${seanceId}`;
+
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (!response.ok) {
+      toast.dismiss();
+      toast.error('Erreur génération PDF');
+      return;
+    }
+
+    const blob    = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a       = document.createElement('a');
+    a.href        = blobUrl;
+    a.download    = `PV_Seance_${numeroSeance}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(blobUrl);
+    toast.dismiss();
+    toast.success('📄 PV téléchargé !');
+
+  } catch (err) {
+    toast.dismiss();
+    toast.error('Erreur téléchargement PDF');
+    console.error(err);
+  }
+};
+
 const getDeductions = () =>
   api.get('/deductions').then(r => r.data);
 
@@ -814,9 +853,13 @@ function RubriquesModal({ seanceId, membres, onClose, onDone }) {
   const prets     = pretsData?.prets         || [];
 
   // Rubriques par type
+
   const rubriquesEpargne = rubriques.filter(r =>
-    ['epargne', 'fond'].includes(r.type_rubrique)
+    r.type_rubrique === 'epargne' ||
+    r.type_rubrique === 'fond' ||
+    r.nom.toLowerCase().includes('banque')
   );
+
   const rubriquesPret = rubriques.filter(r =>
     r.type_rubrique === 'pret'
   );
@@ -1027,30 +1070,46 @@ function RubriquesModal({ seanceId, membres, onClose, onDone }) {
 };
 
   // ── GAV ──────────────────────────────────────────────────
-  const handleGAV = async (type) => {
-    if (!selectedMembre || !montant) {
-      toast.error('Sélectionnez un membre et entrez le montant');
+const handleGAV = async (type) => {
+  if (!selectedMembre || !montant) {
+    toast.error('Sélectionnez un membre et entrez le montant');
+    return;
+  }
+
+  // Vérifier le solde GAV avant retrait
+  if (type === 'retrait') {
+    const membreInfo = membres.find(m => m.id === selectedMembre);
+    const soldeGav   = parseFloat(membreInfo?.gav_solde || 0);
+    const montantDemande = parseFloat(montant);
+
+    if (montantDemande > soldeGav) {
+      toast.error(
+        `Solde GAV insuffisant ! ` +
+        `Disponible : ${soldeGav.toLocaleString('fr-FR')} F`
+      );
       return;
     }
-    setLoading(true);
-    try {
-      await api.post(`/seances/${seanceId}/transactions`, {
-        member_id:        selectedMembre,
-        type_transaction: type === 'depot' ? 'gav_depot' : 'gav_retrait',
-        montant:          parseFloat(montant),
-        sens:             type === 'depot' ? 'credit' : 'debit'
-      });
-      toast.success(type === 'depot'
-        ? '✅ Dépôt GAV enregistré !'
-        : '✅ Retrait GAV enregistré !');
-      setMontant('');
-      onDone();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Erreur');
-    } finally {
-      setLoading(false);
-    }
-  };
+  }
+
+  setLoading(true);
+  try {
+    await api.post(`/seances/${seanceId}/transactions`, {
+      member_id:        selectedMembre,
+      type_transaction: type === 'depot' ? 'gav_depot' : 'gav_retrait',
+      montant:          parseFloat(montant),
+      sens:             type === 'depot' ? 'credit' : 'debit'
+    });
+    toast.success(type === 'depot'
+      ? '✅ Dépôt GAV enregistré !'
+      : '✅ Retrait GAV enregistré !');
+    setMontant('');
+    onDone();
+  } catch (err) {
+    toast.error(err.response?.data?.message || 'Erreur');
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Rubrique sélectionnée pour afficher les détails
   const rubriqueSelectionnee = rubriquesPret.find(r =>
@@ -2469,14 +2528,13 @@ function SeanceCompleteModal({ seanceId, membres, token, onClose }) {
           <div className="flex items-center gap-3">
             {/* Bouton télécharger PV */}
             
-              <a  href={`/api/v1/pv/${seanceId}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 bg-red-600
-                hover:bg-red-700 text-white px-3 py-1.5 rounded-lg
-                text-xs font-medium transition">
-              📄 Télécharger PV
-            </a>
+              <button
+                onClick={() => telechargerPV(seanceId, 'seance')}
+                className="flex items-center gap-2 bg-red-600
+                  hover:bg-red-700 text-white px-3 py-1.5 rounded-lg
+                  text-xs font-medium transition">
+                📄 Télécharger PV
+              </button>
             <button onClick={onClose}
               className="text-gray-400 hover:text-white transition">
               <X size={20} />
@@ -3221,96 +3279,69 @@ useEffect(() => {
           )}
 
           {historiqueData?.seances?.map(s => (
-  <div key={s.id}
-    className="flex items-center gap-4 px-5 py-4 border-b border-[#2e3a50] last:border-0 hover:bg-[#1e2535]/50 transition">
-    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink:0 ${
-      s.statut === 'ouverte'
-        ? 'bg-green-900/30'
-        : 'bg-blue-900/30'}`}>
-      <span className={`font-mono font-bold text-sm ${
-        s.statut === 'ouverte' ? 'text-green-400' : 'text-blue-400'}`}>
-        #{s.numero}
-      </span>
-    </div>
-    <div className="flex-1">
-      <div className="flex items-center gap-3 mb-1">
-        <p className="text-white font-medium text-sm">
-          Séance du {new Date(s.date_seance).toLocaleDateString('fr-FR', {
-            weekday:'long', day:'numeric',
-            month:'long', year:'numeric'
-          })}
-        </p>
-        {/* Statut */}
-        <span className={`text-xs px-2 py-0.5 rounded-md font-mono ${
-          s.statut === 'ouverte'
-            ? 'bg-green-900/40 text-green-400 animate-pulse'
-            : s.ecart === '0.00'
-              ? 'bg-blue-900/40 text-blue-400'
-              : 'bg-red-900/40 text-red-400'}`}>
-          {s.statut === 'ouverte'
-            ? '🟢 En cours'
-            : s.ecart === '0.00' ? '✅ Parfaite' : '⚠️ Écart'}
-        </span>
-      </div>
-      <div className="flex items-center gap-4 text-xs text-gray-500">
-        <span>👥 {s.nb_presents} présents</span>
-        <span>💰 {parseFloat(s.total_entrees || 0)
-          .toLocaleString('fr-FR')} F collectés</span>
-        {s.president_seance_nom && (
-          <span>🎙️ {s.president_seance_nom}</span>
-        )}
-      </div>
-    </div>
-    <div className="flex gap-2">
-      {/* Bouton reprendre si séance ouverte */}
-      {s.statut === 'ouverte' && (
-        <button
-          onClick={async () => {
-            await refreshCaisse(s.id);
-            setTab('seance');
-            toast.success(`Séance #${s.numero} reprise !`);
-          }}
-          className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition"
-        >
-          <Play size={12} /> Reprendre
-        </button>
-      )}
-      <button
-        onClick={() => setShowDetailSeance(s.id)}
-        className="flex items-center gap-2 text-gray-400 hover:text-blue-400 transition text-sm"
-      >
-        <Eye size={16} /> Voir détail 
-        {/* À côté du bouton Eye dans l'historique */}
-
-          <a href={`/api/v1/pv/${s.id}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={e => {
-            // Ajouter le token dans le header via fetch
-            e.preventDefault();
-            const token = localStorage.getItem('token');
-            fetch(`/api/v1/pv/${s.id}`, {
-              headers: { Authorization: `Bearer ${token}` }
-            })
-            .then(res => res.blob())
-            .then(blob => {
-              const url = URL.createObjectURL(blob);
-              const a   = document.createElement('a');
-              a.href    = url;
-              a.download = `PV_Seance_${s.numero}.pdf`;
-              a.click();
-              URL.revokeObjectURL(url);
-            })
-            .catch(() => toast.error('Erreur téléchargement PDF'));
-          }}
-          className="flex items-center gap-2 bg-red-900/30
-            text-red-400 hover:bg-red-900/50 px-3 py-1.5
-            rounded-lg text-xs font-medium transition">
-          📄 PDF
-        </a>
-      </button>
-    </div>
-  </div>
+          <div key={s.id}
+            className="flex items-center gap-4 px-5 py-4 border-b border-[#2e3a50] last:border-0 hover:bg-[#1e2535]/50 transition">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink:0 ${
+              s.statut === 'ouverte'
+                ? 'bg-green-900/30'
+                : 'bg-blue-900/30'}`}>
+              <span className={`font-mono font-bold text-sm ${
+                s.statut === 'ouverte' ? 'text-green-400' : 'text-blue-400'}`}>
+                #{s.numero}
+              </span>
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-1">
+                <p className="text-white font-medium text-sm">
+                  Séance du {new Date(s.date_seance).toLocaleDateString('fr-FR', {
+                    weekday:'long', day:'numeric',
+                    month:'long', year:'numeric'
+                  })}
+                </p>
+                {/* Statut */}
+                <span className={`text-xs px-2 py-0.5 rounded-md font-mono ${
+                  s.statut === 'ouverte'
+                    ? 'bg-green-900/40 text-green-400 animate-pulse'
+                    : s.ecart === '0.00'
+                      ? 'bg-blue-900/40 text-blue-400'
+                      : 'bg-red-900/40 text-red-400'}`}>
+                  {s.statut === 'ouverte'
+                    ? '🟢 En cours'
+                    : s.ecart === '0.00' ? '✅ Parfaite' : '⚠️ Écart'}
+                </span>
+              </div>
+              <div className="flex items-center gap-4 text-xs text-gray-500">
+                <span>👥 {s.nb_presents} présents</span>
+                <span>💰 {parseFloat(s.total_entrees || 0)
+                  .toLocaleString('fr-FR')} F collectés</span>
+                {s.president_seance_nom && (
+                  <span>🎙️ {s.president_seance_nom}</span>
+                )}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              {/* Bouton reprendre si séance ouverte */}
+              {s.statut === 'ouverte' && (
+                <button
+                  onClick={async () => {
+                    await refreshCaisse(s.id);
+                    setTab('seance');
+                    toast.success(`Séance #${s.numero} reprise !`);
+                  }}
+                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition"
+                >
+                  <Play size={12} /> Reprendre
+                </button>
+              )}
+              <button
+                onClick={() => telechargerPV(s.id, s.numero)}
+                className="flex items-center gap-2 bg-red-900/30
+                  text-red-400 hover:bg-red-900/50 px-3 py-1.5
+                  rounded-lg text-xs font-medium transition">
+                📄 PDF
+              </button>
+            </div>
+          </div>
 ))}
 
           {/* Pagination */}
