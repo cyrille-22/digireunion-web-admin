@@ -12,6 +12,7 @@ import Settings from './pages/settings/Settings';
 import MonEspace from './pages/membre/MonEspace';
 import MesSeances from './pages/membre/MesSeances';
 import useAuthStore from './store/authStore';
+import ErrorBoundary from './components/ErrorBoundary';
 
 const queryClient = new QueryClient();
 
@@ -58,7 +59,9 @@ export default function App() {
               border:     '1px solid #2e3a50'
             }
           }} />
-        <AppRoutes />
+        <ErrorBoundary>
+          <AppRoutes />
+        </ErrorBoundary>
       </BrowserRouter>
     </QueryClientProvider>
   );

@@ -3125,7 +3125,7 @@ useEffect(() => {
 
               {/* Stats caisse */}
               {caisse && (
-                <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
                   <div className="bg-[#161b27] border border-[#2e3a50] rounded-xl p-4">
                     <p className="text-xs text-gray-500 font-mono uppercase tracking-wider mb-2">
                       Caisse théorique
@@ -3154,23 +3154,23 @@ useEffect(() => {
               )}
 
               {/* Actions */}
-              <div className="grid grid-cols-5 gap-4 mb-6">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
                 <button onClick={() => setShowPointage(true)}
                   className="bg-[#161b27] border border-[#2e3a50] hover:border-blue-800/50 rounded-xl p-5 text-left transition group">
-                  <div className="w-10 h-10 bg-blue-900/30 rounded-xl flex items-center justify-center mb-3 group-hover:bg-blue-900/50 transition">
-                    <Users size={18} className="text-blue-400" />
+                  <div className="w-8 h-8 md:w-10 md:h-10 bg-blue-900/30 rounded-xl flex items-center justify-center mb-2 md:mb-3 group-hover:bg-blue-900/50 transition flex-shrink-0">
+                    <Users size={16} className="text-blue-400" />
                   </div>
-                  <p className="text-white font-medium">Pointer présences</p>
-                  <p className="text-xs text-gray-500 mt-1">Présent / Absent / Excusé</p>
+                  <p className="text-white font-medium text-sm md:text-base truncate">Présences</p>
+                  <p className="text-xs text-gray-500 mt-1 hidden md:block">Présent / Absent / Excusé</p>
                 </button>
 
                 <button onClick={() => setShowCotisation(true)}
                   className="bg-[#161b27] border border-[#2e3a50] hover:border-green-800/50 rounded-xl p-5 text-left transition group">
-                  <div className="w-10 h-10 bg-green-900/30 rounded-xl flex items-center justify-center mb-3 group-hover:bg-green-900/50 transition">
+                  <div className="w-8 h-8 md:w-10 md:h-10 bg-green-900/30 rounded-xl flex items-center justify-center mb-2 md:mb-3 group-hover:bg-green-900/50 transition flex-shrink-0">
                     <CreditCard size={18} className="text-green-400" />
                   </div>
-                  <p className="text-white font-medium">Saisir cotisations</p>
-                  <p className="text-xs text-gray-500 mt-1">Grande & Petite Tontine</p>
+                  <p className="text-white font-medium text-sm md:text-base truncate">cotisations</p>
+                  <p className="text-xs text-gray-500 mt-1 hidden md:block  ">Grande & Petite Tontine</p>
                 </button>
 
                 <button onClick={() => refreshCaisse(activeSeance.id)}
@@ -3178,8 +3178,8 @@ useEffect(() => {
                   <div className="w-10 h-10 bg-amber-900/30 rounded-xl flex items-center justify-center mb-3 group-hover:bg-amber-900/50 transition">
                     <RefreshCw size={18} className="text-amber-400" />
                   </div>
-                  <p className="text-white font-medium">Actualiser</p>
-                  <p className="text-xs text-gray-500 mt-1">Caisse temps réel</p>
+                  <p className="text-white font-medium text-sm md:text-base truncate">Actualiser</p>
+                  <p className="text-xs text-gray-500 mt-1 hidden md:block">Caisse temps réel</p>
                 </button>
 
                 <button onClick={() => {
@@ -3197,8 +3197,8 @@ useEffect(() => {
                         group-hover:bg-purple-900/50 transition">
                         <CreditCard size={18} className="text-purple-400" />
                       </div>
-                      <p className="text-white font-medium">Épargne & Prêts</p>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-white font-medium text-sm md:text-base truncate">Épargne & Prêts</p>
+                      <p className="text-xs text-gray-500 mt-1 hidden md:block">
                         Banque · Fond · GAV · Remboursements
                       </p>
                     </button>
@@ -3212,8 +3212,8 @@ useEffect(() => {
                           group-hover:bg-green-900/50 transition">
                           <span className="text-2xl">🎉</span>
                         </div>
-                        <p className="text-white font-medium">Bouffer</p>
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-white font-medium text-sm md:text-base truncate">Bouffer</p>
+                        <p className="text-xs text-gray-500 mt-1 hidden md:block">
                           Désigner le(s) bénéficiaire(s)
                         </p>
                       </button>

@@ -152,7 +152,7 @@ export default function Settings() {
 
       {/* ── PROFIL ── */}
       {tab === 'profil' && (
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
 
           {/* Stats rapides */}
           <StatCard icon={Users} title="Membres actifs"
@@ -180,7 +180,7 @@ export default function Settings() {
                   Informations de l'association
                 </h2>
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                   <div>
                     <p className="text-xs text-gray-500 mb-1">
                       Nom de l'association
@@ -275,7 +275,7 @@ export default function Settings() {
                   mb-5">Modifier les informations</h2>
 
                 <form onSubmit={handleSubmit}>
-                  <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
                       <label className="block text-xs text-gray-400
                         mb-2">Nom de l'association</label>
@@ -567,7 +567,7 @@ export default function Settings() {
               <Users size={16} className="text-blue-400" />
               Membres par rôle
             </h2>
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
               {stats.membres_par_role?.map(r => (
                 <div key={r.role}
                   className="bg-[#1e2535] rounded-xl p-3 text-center">

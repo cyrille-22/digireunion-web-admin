@@ -251,7 +251,7 @@ export default function Members() {
       </div>
 
       {/* Stats rapides */}
-      <div className="grid grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mb-6">
         {['president','secretaire','tresorier','membre'].map(role => (
           <div key={role}
             className="bg-[#161b27] border border-[#2e3a50] rounded-xl p-3 text-center">
@@ -267,7 +267,8 @@ export default function Members() {
       <div className="bg-[#161b27] border border-[#2e3a50] rounded-xl overflow-hidden">
 
         {/* En-tête tableau */}
-        <div className="grid grid-cols-12 gap-3 px-4 py-3 bg-[#1e2535] text-xs text-gray-500 font-mono uppercase tracking-wider">
+       {/* En-tête tableau — visible seulement sur desktop */}
+        <div className="hidden md:grid grid-cols-12 gap-3 px-4 py-3 bg-[#1e2535] text-xs text-gray-500 font-mono uppercase tracking-wider">
           <div className="col-span-3">Nom</div>
           <div className="col-span-2">Téléphone</div>
           <div className="col-span-2">Rôle</div>
@@ -288,79 +289,84 @@ export default function Members() {
           </div>
         ) : (
           filtered.map(m => (
-            <div key={m.id}
-              className="grid grid-cols-12 gap-3 px-4 py-3 border-b border-[#2e3a50] last:border-0 items-center hover:bg-[#1e2535]/50 transition"
-            >
-              {/* Nom */}
-              <div className="col-span-3 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-blue-900/40 text-blue-400 flex items-center justify-center text-xs font-bold flex-shrink-0">
-                  {m.nom_complet.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase()}
-                </div>
-                <span className="text-white text-sm font-medium truncate">
-                  {m.nom_complet}
-                </span>
-              </div>
-
-              {/* Téléphone */}
-              <div className="col-span-2 text-gray-400 font-mono text-xs">
-                {m.telephone}
-              </div>
-
-              {/* Rôle */}
-              <div className="col-span-2">
-                <span className={`px-2 py-1 rounded-md text-xs font-mono font-medium ${roleColors[m.role] || 'bg-gray-800 text-gray-400'}`}>
-                  {m.role}
-                </span>
-              </div>
-
-              {/* Score */}
-              <div className="col-span-1">
-                <div className="flex items-center gap-1">
-                  <span className={`text-sm font-mono font-bold
-                    ${m.score_fiabilite >= 80 ? 'text-green-400' :
-                      m.score_fiabilite >= 60 ? 'text-amber-400' :
-                      'text-red-400'}`}>
-                    {m.score_fiabilite}
-                  </span>
-                  <span className="text-xs text-gray-600">/100</span>
-                </div>
-              </div>
-
-              {/* GAV */}
-              <div className="col-span-2 text-white font-mono text-sm">
-                {parseFloat(m.gav_solde).toLocaleString('fr-FR')} F
-              </div>
-
-              {/* Statut */}
-              <div className="col-span-1">
-                <span className={`px-2 py-1 rounded-md text-xs font-mono
-                  ${m.statut === 'actif'
-                    ? 'bg-green-900/40 text-green-400'
-                    : 'bg-red-900/40 text-red-400'}`}>
-                  {m.statut}
-                </span>
-              </div>
-
-              {/* Actions */}
-              <div className="col-span-1 flex items-center gap-2">
-                <button
-                  onClick={() => handleEdit(m)}
-                  className="text-gray-400 hover:text-blue-400 transition"
-                  title="Modifier"
+                <div key={m.id}
+                  className="border-b border-[#2e3a50] last:border-0 hover:bg-[#1e2535]/50 transition"
                 >
-                  <Pencil size={14} />
-                </button>
-                <button
-                  onClick={() => handleDelete(m)}
-                  className="text-gray-400 hover:text-red-400 transition"
-                  title="Sortie"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            </div>
-          ))
-        )}
+                  {/* ── VERSION MOBILE — carte ── */}
+                  <div className="md:hidden p-3 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-blue-900/40 text-blue-400 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                      {m.nom_complet.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-sm font-medium truncate">{m.nom_complet}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className={`px-1.5 py-0.5 rounded text-xs font-mono ${roleColors[m.role] || 'bg-gray-800 text-gray-400'}`}>
+                          {m.role}
+                        </span>
+                        <span className="text-xs text-gray-500 font-mono">
+                          {parseFloat(m.gav_solde).toLocaleString('fr-FR')} F
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className={`text-xs font-mono font-bold ${
+                        m.score_fiabilite >= 80 ? 'text-green-400' :
+                        m.score_fiabilite >= 60 ? 'text-amber-400' : 'text-red-400'}`}>
+                        {m.score_fiabilite}
+                      </span>
+                      <button onClick={() => handleEdit(m)} className="text-gray-400 hover:text-blue-400 transition p-1">
+                        <Pencil size={14} />
+                      </button>
+                      <button onClick={() => handleDelete(m)} className="text-gray-400 hover:text-red-400 transition p-1">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* ── VERSION DESKTOP — tableau ── */}
+                  <div className="hidden md:grid grid-cols-12 gap-3 px-4 py-3 items-center">
+                    <div className="col-span-3 flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-blue-900/40 text-blue-400 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                        {m.nom_complet.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase()}
+                      </div>
+                      <span className="text-white text-sm font-medium truncate">{m.nom_complet}</span>
+                    </div>
+                    <div className="col-span-2 text-gray-400 font-mono text-xs">{m.telephone}</div>
+                    <div className="col-span-2">
+                      <span className={`px-2 py-1 rounded-md text-xs font-mono font-medium ${roleColors[m.role] || 'bg-gray-800 text-gray-400'}`}>
+                        {m.role}
+                      </span>
+                    </div>
+                    <div className="col-span-1">
+                      <span className={`text-sm font-mono font-bold ${
+                        m.score_fiabilite >= 80 ? 'text-green-400' :
+                        m.score_fiabilite >= 60 ? 'text-amber-400' : 'text-red-400'}`}>
+                        {m.score_fiabilite}
+                      </span>
+                      <span className="text-xs text-gray-600">/100</span>
+                    </div>
+                    <div className="col-span-2 text-white font-mono text-sm">
+                      {parseFloat(m.gav_solde).toLocaleString('fr-FR')} F
+                    </div>
+                    <div className="col-span-1">
+                      <span className={`px-2 py-1 rounded-md text-xs font-mono ${
+                        m.statut === 'actif' ? 'bg-green-900/40 text-green-400' : 'bg-red-900/40 text-red-400'}`}>
+                        {m.statut}
+                      </span>
+                    </div>
+                    <div className="col-span-1 flex items-center gap-2">
+                      <button onClick={() => handleEdit(m)} className="text-gray-400 hover:text-blue-400 transition">
+                        <Pencil size={14} />
+                      </button>
+                      <button onClick={() => handleDelete(m)} className="text-gray-400 hover:text-red-400 transition">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                ))
+          )
+        }
       </div>
 
       {/* Modal */}

@@ -71,7 +71,7 @@ function TontineModal({ tontine, onClose, onSave }) {
           </div>
 
           {/* Périodicité + Nb bénéficiaires */}
-          <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="grid grid-cols-2 gap-3 mb-4 text-sm truncate">
             <div>
               <label className="block text-sm text-gray-400 mb-2">Périodicité</label>
               <select value={form.periodicite}
@@ -103,7 +103,7 @@ function TontineModal({ tontine, onClose, onSave }) {
           </div>
 
           {/* Pénalité + Reliquat */}
-          <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="grid grid-cols-2 gap-3 mb-4 text-sm truncate">
             <div>
               <label className="block text-sm text-gray-400 mb-2">Pénalité absence (F)</label>
               <input type="number" min="0" value={form.penalite_absence}
@@ -185,7 +185,7 @@ function RubriqueModal({ rubrique, onClose, onSave }) {
               required />
           </div>
 
-          <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="grid grid-cols-2 gap-3 mb-4 text-sm truncate">
             <div>
               <label className="block text-sm text-gray-400 mb-2">Plafond (F) — vide = illimité</label>
               <input type="number" value={form.plafond}
@@ -201,7 +201,7 @@ function RubriqueModal({ rubrique, onClose, onSave }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="grid grid-cols-2 gap-3 mb-4 text-sm truncate">
             <div>
               <label className="block text-sm text-gray-400 mb-2">Périodicité taux</label>
               <select value={form.periodicite_interet}
@@ -224,7 +224,7 @@ function RubriqueModal({ rubrique, onClose, onSave }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 mb-6">
+          <div className="grid grid-cols-2 gap-3 mb-6 text-sm truncate">
             <div>
               <label className="block text-sm text-gray-400 mb-2">Durée max (séances)</label>
               <input type="number" min="1" value={form.duree_max_seances}
@@ -748,7 +748,7 @@ const deleteMutation = useMutation({
       </div>           
       {/* TONTINES */}
       {tab === 'tontines' && (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {loadingT ? (
             <p className="text-gray-500 col-span-2 text-center py-10">Chargement...</p>
           ) : tontines.map(t => (
@@ -788,7 +788,7 @@ const deleteMutation = useMutation({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 text-sm truncate">
                 <div className="bg-[#1e2535] rounded-lg p-3">
                   <p className="text-xs text-gray-500 mb-1">Montant/part</p>
                   <p className="text-white font-mono font-bold">
