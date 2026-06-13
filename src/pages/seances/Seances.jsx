@@ -21,6 +21,8 @@ const getHistorique = (page) =>
   api.get(`/cotisations/historique?page=${page}`).then(r => r.data);
 const getBilan = (id) =>
   api.get(`/cotisations/bilan/${id}`).then(r => r.data);
+const getEtatCotisations = (seanceId, tontineId) =>
+  api.get(`/cotisations/etat/${seanceId}/${tontineId}`).then(r => r.data);
 const getMembresTontine = (id) =>
   api.get(`/cotisations/tontine/${id}/membres`).then(r => r.data);
 const saisirCotisations = (data) =>
@@ -36,8 +38,11 @@ const validerPret = (id, data) =>
   api.put(`/prets/${id}/valider`, data);
 const rembourserPret = (data) =>
   api.post('/prets/rembourser', data);
+const getRetardsCotisation = (tontineId, seanceId) =>
+  api.get(`/cotisations/retards/${tontineId}/${seanceId}`).then(r => r.data);
 const getPretsMembre = (id) =>
   api.get(`/prets/membre/${id}`).then(r => r.data);
+
 // API Bouffer
 const preparerBouffer = (seanceId, tontineId, memberId) =>
   api.get(`/bouffer/preparer/${seanceId}/${tontineId}/${memberId}`)
@@ -323,32 +328,48 @@ function CotisationModal({ seanceId, tontines, onClose, onDone }) {
   const [loading, setLoading]                 = useState(false);
   const [submitting, setSubmitting]           = useState(false);
 
+ 
   const selectTontine = async (tontine) => {
-    setLoading(true);
-    try {
-      const data = await getMembresTontine(tontine.id);
-      setMembresData(data);
-      setCotisations(data.membres.map(m => ({
-        member_id:  m.member_id,
-        nom:        m.nom_complet,
-        nb_parts:   m.nb_parts,
-        a_cotise:   false,
-        montant:    parseFloat(m.montant_du)
-      })));
-      setSelectedTontine(tontine);
-    } catch {
-      toast.error('Erreur chargement membres');
-    } finally {
-      setLoading(false);
-    }
-  };
+  setLoading(true);
+  try {
+    const data    = await getMembresTontine(tontine.id);
+    const etat    = await getEtatCotisations(seanceId, tontine.id);
+    const retards = await getRetardsCotisation(tontine.id, seanceId);
+
+    const dejaC = new Set(
+      etat.cotisations
+        .filter(c => c.statut === 'cotise')
+        .map(c => c.member_id)
+    );
+    const retardIds = new Set(retards.retards.map(r => r.member_id));
+
+    setMembresData(data);
+    setCotisations(data.membres.map(m => ({
+      member_id:       m.member_id,
+      nom:             m.nom_complet,
+      nb_parts:        m.nb_parts,
+      a_cotise:        dejaC.has(m.member_id),
+      deja_enregistre: dejaC.has(m.member_id),
+      en_retard:       retardIds.has(m.member_id),
+      montant:         parseFloat(m.montant_du)
+    })));
+    setSelectedTontine(tontine);
+  } catch {
+    toast.error('Erreur chargement membres');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const toggleCotise = (memberId) => {
-    setCotisations(prev =>
-      prev.map(c => c.member_id === memberId
-        ? { ...c, a_cotise: !c.a_cotise } : c)
-    );
-  };
+  setCotisations(prev =>
+    prev.map(c => {
+      if (c.member_id !== memberId) return c;
+      if (c.deja_enregistre) return c; // déjà cotisé — non modifiable
+      return { ...c, a_cotise: !c.a_cotise };
+    })
+  );
+};
 
   const totalAttendu  = cotisations.reduce((s, c) => s + c.montant, 0);
   const totalCotise   = cotisations.filter(c => c.a_cotise)
@@ -357,10 +378,11 @@ function CotisationModal({ seanceId, tontines, onClose, onDone }) {
   const nbCotises     = cotisations.filter(c => c.a_cotise).length;
 
   const handleSubmit = async () => {
-    if (cotisations.filter(c => c.a_cotise).length === 0) {
-      toast.error('Cochez au moins un membre ayant cotisé');
-      return;
-    }
+  const nouveaux = cotisations.filter(c => c.a_cotise && !c.deja_enregistre);
+  if (nouveaux.length === 0) {
+    toast.error('Aucun nouveau membre cotisé à enregistrer');
+    return;
+  }
     setSubmitting(true);
     try {
       await saisirCotisations({
@@ -372,6 +394,7 @@ function CotisationModal({ seanceId, tontines, onClose, onDone }) {
           a_cotise:  c.a_cotise
         }))
       });
+     
       toast.success(`✅ Cotisations ${selectedTontine.nom} enregistrées !`);
       onDone();
       onClose();
@@ -386,7 +409,7 @@ function CotisationModal({ seanceId, tontines, onClose, onDone }) {
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
       <div className="bg-[#161b27] border border-[#2e3a50] rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-white">
+          <h2 className="text-base md:text-lg font-semibold text-white">
             {selectedTontine ? `Cotisation — ${selectedTontine.nom}` : 'Choisir la tontine'}
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white">
@@ -400,19 +423,17 @@ function CotisationModal({ seanceId, tontines, onClose, onDone }) {
             {tontines.map(t => (
               <button key={t.id}
                 onClick={() => selectTontine(t)}
-                className="bg-[#1e2535] border border-[#2e3a50] hover:border-blue-800/50 rounded-xl p-5 text-left transition"
+                className="bg-[#1e2535] border border-[#2e3a50] hover:border-blue-800/50 rounded-xl p-3 md:p-5 text-left transition w-full"
               >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-white font-semibold">{t.nom}</p>
-                    <p className="text-xs text-gray-500 mt-1">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-white font-semibold text-sm md:text-base truncate">{t.nom}</p>
+                    <p className="text-xs text-gray-500 mt-1 truncate">
                       {parseFloat(t.montant_part).toLocaleString('fr-FR')} F/part
                       · {t.periodicite}
-                      · {t.mode_attribution === 'tour_role'
-                          ? 'Tour de rôle' : 'Tirage au sort'}
                     </p>
                   </div>
-                  <ChevronRight size={20} className="text-gray-400" />
+                  <ChevronRight size={20} className="text-gray-400 flex-shrink-0" />
                 </div>
               </button>
             ))}
@@ -430,10 +451,10 @@ function CotisationModal({ seanceId, tontines, onClose, onDone }) {
         {selectedTontine && !loading && (
           <>
             {/* Totaux en temps réel */}
-            <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-4">
               <div className="bg-blue-900/20 border border-blue-800/30 rounded-xl p-3 text-center">
                 <p className="text-xs text-gray-500 mb-1">Total attendu</p>
-                <p className="text-lg font-bold text-blue-400 font-mono">
+                <p className="text-base md:text-lg font-bold text-blue-400 font-mono">
                   {totalAttendu.toLocaleString('fr-FR')} F
                 </p>
               </div>
@@ -441,7 +462,7 @@ function CotisationModal({ seanceId, tontines, onClose, onDone }) {
                 <p className="text-xs text-gray-500 mb-1">
                   Total cotisé ({nbCotises})
                 </p>
-                <p className="text-lg font-bold text-green-400 font-mono">
+                <p className="text-base md:text-lg font-bold text-green-400 font-mono">
                   {totalCotise.toLocaleString('fr-FR')} F
                 </p>
               </div>
@@ -450,7 +471,7 @@ function CotisationModal({ seanceId, tontines, onClose, onDone }) {
                   ? 'bg-green-900/20 border-green-800/30'
                   : 'bg-amber-900/20 border-amber-800/30'}`}>
                 <p className="text-xs text-gray-500 mb-1">Reste à cotiser</p>
-                <p className={`text-lg font-bold font-mono ${
+                <p className={`text-base md:text-lg font-bold font-mono ${
                   resteACotiser === 0 ? 'text-green-400' : 'text-amber-400'}`}>
                   {resteACotiser.toLocaleString('fr-FR')} F
                 </p>
@@ -493,14 +514,20 @@ function CotisationModal({ seanceId, tontines, onClose, onDone }) {
 
             {/* Liste membres */}
             <div className="flex-1 overflow-y-auto space-y-2 mb-4">
-              {cotisations.map(c => (
-                <div key={c.member_id}
-                  onClick={() => toggleCotise(c.member_id)}
-                  className={`flex items-center gap-4 rounded-xl px-4 py-3 cursor-pointer transition border ${
-                    c.a_cotise
-                      ? 'bg-green-900/20 border-green-800/30'
-                      : 'bg-[#1e2535] border-transparent hover:border-[#3a4960]'}`}
-                >
+              {[...cotisations].sort((a, b) => {
+                    if (a.deja_enregistre !== b.deja_enregistre) return a.deja_enregistre ? 1 : -1;
+                    if (a.en_retard !== b.en_retard) return a.en_retard ? -1 : 1;
+                    return 0;
+                  }).map(c => (
+                  <div key={c.member_id}
+                    onClick={() => toggleCotise(c.member_id)}
+                    className={`flex items-center gap-4 rounded-xl px-4 py-3 transition border ${
+                      c.deja_enregistre
+                        ? 'bg-green-900/10 border-green-800/20 opacity-60 cursor-not-allowed'
+                        : c.a_cotise
+                          ? 'bg-green-900/20 border-green-800/30 cursor-pointer'
+                          : 'bg-[#1e2535] border-transparent hover:border-[#3a4960] cursor-pointer'}`}
+                  >
                   {/* Checkbox */}
                   <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center flex-shrink-0 transition ${
                     c.a_cotise
@@ -508,7 +535,25 @@ function CotisationModal({ seanceId, tontines, onClose, onDone }) {
                       : 'border-gray-600'}`}>
                     {c.a_cotise && <Check size={14} className="text-white" />}
                   </div>
-
+                    <div className="flex-1">
+                        <p className={`font-medium text-sm ${
+                          c.a_cotise ? 'text-green-400' : 'text-white'}`}>
+                          {c.nom}
+                          {c.deja_enregistre && (
+                            <span className="ml-2 text-xs bg-green-900/40 text-green-400 px-1.5 py-0.5 rounded">
+                              ✅ Déjà cotisé
+                            </span>
+                          )}
+                          {!c.deja_enregistre && c.en_retard && (
+                            <span className="ml-2 text-xs bg-red-900/40 text-red-400 px-1.5 py-0.5 rounded">
+                              ⚠️ En retard
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {c.nb_parts} part{c.nb_parts > 1 ? 's' : ''}
+                        </p>
+                      </div>  
                   {/* Avatar */}
                   <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
                     c.a_cotise
@@ -586,7 +631,7 @@ function BilanModal({ seanceId, onClose, onCloturer }) {
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
       <div className="bg-[#161b27] border border-[#2e3a50] rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold text-white">
+          <h2 className="text-base md:text-lg font-semibold text-white">
             Bilan — Séance #{bilan?.seance?.numero}
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white">
@@ -749,7 +794,7 @@ function CloturModal({ seance, caisse, onClose, onDone }) {
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
       <div className="bg-[#161b27] border border-[#2e3a50] rounded-2xl p-6 w-full max-w-md">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold text-white">
+          <h2 className="text-base md:text-lg font-semibold text-white">
             Clôturer la séance #{seance?.numero}
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white">
@@ -773,7 +818,7 @@ function CloturModal({ seance, caisse, onClose, onDone }) {
               value={caissePhysique}
               onChange={e => setCaissePhysique(e.target.value)}
               placeholder="Montant compté en caisse"
-              className="w-full bg-[#1e2535] border border-[#2e3a50] rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 text-lg font-mono"
+              className="w-full bg-[#1e2535] border border-[#2e3a50] rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 text-base md:text-lg font-mono"
               required />
           </div>
 
@@ -1752,6 +1797,7 @@ function BoufferModal({ seanceId, membres, tontines, onClose, onDone }) {
   const [boufferData, setBoufferData]   = useState(null);
   const [loading, setLoading]           = useState(false);
   const [submitting, setSubmitting]     = useState(false);
+  const [partsABouffer, setPartsABouffer] = useState(1);
 
   // Déductions sélectionnées pour chaque membre
   const [deductionsSelectionnees, setDeductionsSelectionnees] = useState([]);
@@ -1766,6 +1812,7 @@ function BoufferModal({ seanceId, membres, tontines, onClose, onDone }) {
     try {
       const data = await preparerBouffer(seanceId, tontineId, memberId);
       setBoufferData(data);
+      setPartsABouffer(1); // reset à 1 part par défaut
       // Initialiser les déductions
       setDeductionsSelectionnees(data.deductions.map(d => ({
         ...d,
@@ -1793,8 +1840,12 @@ function BoufferModal({ seanceId, membres, tontines, onClose, onDone }) {
     .filter(p => p.selectionne)
     .reduce((s, p) => s + parseFloat(p.montant_deduit || 0), 0);
 
+  const montantBrutEffectif = boufferData
+  ? parseFloat(boufferData.montant_brut) * partsABouffer / boufferData.nb_parts
+  : 0;
+
   const montantNet = boufferData
-    ? parseFloat(boufferData.montant_brut) - totalDeductions - totalPrets
+    ? montantBrutEffectif - totalDeductions - totalPrets
     : 0;
 
   // Confirmer le bouffer pour le membre courant
@@ -1805,7 +1856,7 @@ function BoufferModal({ seanceId, membres, tontines, onClose, onDone }) {
         member_id:    selectedMembres[currentMembreIndex].id,
         tontine_id:   selectedTontine.id,
         seance_id:    seanceId,
-        montant_brut: boufferData.montant_brut,
+        montant_brut: montantBrutEffectif,
         deductions_selectionnees: deductionsSelectionnees
           .filter(d => d.selectionne)
           .map(d => ({ id: d.id, nom: d.nom, montant: d.montant })),
@@ -2073,21 +2124,48 @@ function BoufferModal({ seanceId, membres, tontines, onClose, onDone }) {
                       </div>
                     </div>
                   </div>
-
-                  {/* Montant brut */}
-                  <div className="bg-green-900/20 border
-                    border-green-800/30 rounded-xl p-4 mb-4">
-                    <div className="flex justify-between items-center">
-                      <p className="text-sm text-gray-400">
-                        Montant brut {selectedTontine.nom}
+                  {/* Sélecteur nombre de parts à bouffer */}
+                  {boufferData.nb_parts > 1 && (
+                    <div className="bg-amber-900/20 border border-amber-800/30 rounded-xl p-4 mb-4">
+                      <p className="text-sm text-amber-400 mb-2">
+                        Ce membre a {boufferData.nb_parts} parts dans cette tontine.
+                        Combien de parts bouffe-t-il aujourd'hui ?
                       </p>
-                      <p className="text-xl font-bold text-green-400
-                        font-mono">
-                        {parseFloat(boufferData.montant_brut)
-                          .toLocaleString('fr-FR')} F
-                      </p>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="number"
+                          min="1"
+                          max={boufferData.nb_parts}
+                          value={partsABouffer}
+                          onChange={e => setPartsABouffer(
+                            Math.min(Math.max(1, parseInt(e.target.value) || 1), boufferData.nb_parts)
+                          )}
+                          className="w-20 bg-[#1e2535] border border-[#2e3a50] rounded-xl px-3 py-2 text-white text-center font-mono focus:outline-none focus:border-amber-500"
+                        />
+                        <span className="text-sm text-gray-400">
+                          sur {boufferData.nb_parts} part(s) — soit
+                          {' '}{(parseFloat(boufferData.montant_brut) * partsABouffer / boufferData.nb_parts)
+                            .toLocaleString('fr-FR')} F brut
+                        </span>
+                      </div>
                     </div>
-                  </div>
+                  )}
+                  {/* Montant brut */}
+                  <div className="bg-green-900/20 border border-green-800/30 rounded-xl p-4 mb-4">
+                      <div className="flex justify-between items-center">
+                        <p className="text-sm text-gray-400">
+                          Montant brut {selectedTontine.nom}
+                          {boufferData.nb_parts > 1 && (
+                            <span className="text-xs text-amber-400 ml-1">
+                              ({partsABouffer}/{boufferData.nb_parts} part(s))
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-xl font-bold text-green-400 font-mono">
+                          {montantBrutEffectif.toLocaleString('fr-FR')} F
+                        </p>
+                      </div>
+                    </div>
 
                   {/* Déductions configurées */}
                   <div className="mb-4">
@@ -2241,7 +2319,7 @@ function BoufferModal({ seanceId, membres, tontines, onClose, onDone }) {
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-400">Montant brut</span>
                         <span className="text-green-400 font-mono">
-                          {parseFloat(boufferData.montant_brut)
+                          {montantBrutEffectif
                             .toLocaleString('fr-FR')} F
                         </span>
                       </div>
@@ -3091,37 +3169,31 @@ useEffect(() => {
           {activeSeance && (
             <>
               {/* Bandeau */}
-              <div className="bg-green-900/20 border border-green-800/30 rounded-xl px-5 py-3 mb-6 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse"></div>
-                  <span className="text-green-400 font-medium">
-                    Séance #{activeSeance.numero} en cours
-                  </span>
-                  {/* Dans le bandeau vert, à côté du bouton Bilan & Clôture */}
-                  <button
-                    onClick={() => setShowSeanceComplete(true)}
-                    className="flex items-center gap-2 bg-blue-600
-                      hover:bg-blue-700 text-white px-4 py-2 rounded-lg
-                      text-sm font-medium transition">
-                    📋 Ordre du jour & Nouvelles
-                  </button>
-
-
-                  {activeSeance.president_seance_nom && (
-                    <span className="text-gray-500 text-sm">
-                      Présidée par {activeSeance.president_seance_nom}
-                    </span>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowBilan(true)}
-                    className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
-                  >
-                    <Eye size={14} /> Bilan & Clôture
-                  </button>
-                </div>
+              <div className="bg-green-900/20 border border-green-800/30 rounded-xl px-3 md:px-5 py-3 mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse flex-shrink-0"></div>
+                <span className="text-green-400 font-medium text-sm md:text-base truncate">
+                  Séance #{activeSeance.numero} en cours
+                </span>
               </div>
+              {activeSeance.president_seance_nom && (
+                <p className="text-gray-500 text-xs mb-3 truncate">
+                  Présidée par {activeSeance.president_seance_nom}
+                </p>
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setShowSeanceComplete(true)}
+                  className="flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-2 py-2 rounded-lg text-xs md:text-sm font-medium transition">
+                  📋 <span className="truncate">Ordre du jour</span>
+                </button>
+                <button
+                  onClick={() => setShowBilan(true)}
+                  className="flex items-center justify-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white px-2 py-2 rounded-lg text-xs md:text-sm font-medium transition">
+                  <Eye size={14} className="flex-shrink-0" /> <span className="truncate">Bilan & Clôture</span>
+                </button>
+              </div>
+            </div>
 
               {/* Stats caisse */}
               {caisse && (
@@ -3279,70 +3351,72 @@ useEffect(() => {
           )}
 
           {historiqueData?.seances?.map(s => (
-          <div key={s.id}
-            className="flex items-center gap-4 px-5 py-4 border-b border-[#2e3a50] last:border-0 hover:bg-[#1e2535]/50 transition">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink:0 ${
-              s.statut === 'ouverte'
-                ? 'bg-green-900/30'
-                : 'bg-blue-900/30'}`}>
-              <span className={`font-mono font-bold text-sm ${
-                s.statut === 'ouverte' ? 'text-green-400' : 'text-blue-400'}`}>
-                #{s.numero}
-              </span>
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-1">
-                <p className="text-white font-medium text-sm">
-                  Séance du {new Date(s.date_seance).toLocaleDateString('fr-FR', {
-                    weekday:'long', day:'numeric',
-                    month:'long', year:'numeric'
-                  })}
-                </p>
-                {/* Statut */}
-                <span className={`text-xs px-2 py-0.5 rounded-md font-mono ${
+            <div key={s.id}
+              className="px-3 md:px-5 py-4 border-b border-[#2e3a50] last:border-0 hover:bg-[#1e2535]/50 transition">
+
+              {/* Ligne 1 — numéro + date + statut */}
+              <div className="flex items-center gap-2 mb-2">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                  s.statut === 'ouverte' ? 'bg-green-900/30' : 'bg-blue-900/30'}`}>
+                  <span className={`font-mono font-bold text-xs ${
+                    s.statut === 'ouverte' ? 'text-green-400' : 'text-blue-400'}`}>
+                    #{s.numero}
+                  </span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-white font-medium text-sm truncate">
+                    {new Date(s.date_seance).toLocaleDateString('fr-FR', {
+                      day:'numeric', month:'long', year:'numeric'
+                    })}
+                  </p>
+                </div>
+                <span className={`text-xs px-2 py-0.5 rounded-md font-mono flex-shrink-0 ${
                   s.statut === 'ouverte'
                     ? 'bg-green-900/40 text-green-400 animate-pulse'
                     : s.ecart === '0.00'
                       ? 'bg-blue-900/40 text-blue-400'
                       : 'bg-red-900/40 text-red-400'}`}>
-                  {s.statut === 'ouverte'
-                    ? '🟢 En cours'
-                    : s.ecart === '0.00' ? '✅ Parfaite' : '⚠️ Écart'}
+                  {s.statut === 'ouverte' ? '🟢' : s.ecart === '0.00' ? '✅' : '⚠️'}
                 </span>
               </div>
-              <div className="flex items-center gap-4 text-xs text-gray-500">
+
+              {/* Ligne 2 — infos */}
+              <div className="flex items-center gap-3 text-xs text-gray-500 mb-2 flex-wrap">
                 <span>👥 {s.nb_presents} présents</span>
-                <span>💰 {parseFloat(s.total_entrees || 0)
-                  .toLocaleString('fr-FR')} F collectés</span>
+                <span className="truncate">
+                  💰 {parseFloat(s.total_entrees || 0).toLocaleString('fr-FR')} F
+                </span>
                 {s.president_seance_nom && (
-                  <span>🎙️ {s.president_seance_nom}</span>
+                  <span className="truncate">🎙️ {s.president_seance_nom}</span>
                 )}
               </div>
-            </div>
-            <div className="flex gap-2">
-              {/* Bouton reprendre si séance ouverte */}
-              {s.statut === 'ouverte' && (
+
+              {/* Ligne 3 — actions */}
+              <div className="flex items-center gap-2">
+                {s.statut === 'ouverte' && (
+                  <button
+                    onClick={async () => {
+                      await refreshCaisse(s.id);
+                      setTab('seance');
+                      toast.success(`Séance #${s.numero} reprise !`);
+                    }}
+                    className="flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition">
+                    <Play size={12} /> Reprendre
+                  </button>
+                )}
                 <button
-                  onClick={async () => {
-                    await refreshCaisse(s.id);
-                    setTab('seance');
-                    toast.success(`Séance #${s.numero} reprise !`);
-                  }}
-                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition"
-                >
-                  <Play size={12} /> Reprendre
+                  onClick={() => telechargerPV(s.id, s.numero)}
+                  className="flex items-center gap-1.5 bg-red-900/30 text-red-400 hover:bg-red-900/50 px-2.5 py-1.5 rounded-lg text-xs font-medium transition">
+                  📄 PDF
                 </button>
-              )}
-              <button
-                onClick={() => telechargerPV(s.id, s.numero)}
-                className="flex items-center gap-2 bg-red-900/30
-                  text-red-400 hover:bg-red-900/50 px-3 py-1.5
-                  rounded-lg text-xs font-medium transition">
-                📄 PDF
-              </button>
+                <button
+                  onClick={() => setShowDetailSeance(s.id)}
+                  className="flex items-center gap-1.5 text-gray-400 hover:text-blue-400 transition text-xs">
+                  <Eye size={14} /> Détail
+                </button>
+              </div>
             </div>
-          </div>
-))}
+          ))}
 
           {/* Pagination */}
           {historiqueData?.pages > 1 && (

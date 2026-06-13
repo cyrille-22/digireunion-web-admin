@@ -816,53 +816,82 @@ const deleteMutation = useMutation({
       )}
 
       {/* RUBRIQUES */}
-      {tab === 'rubriques' && (
-        <div className="bg-[#161b27] border border-[#2e3a50] rounded-xl overflow-hidden">
-          <div className="grid grid-cols-7 gap-3 px-4 py-3 bg-[#1e2535] text-xs text-gray-500 font-mono uppercase tracking-wider">
-            <div className="col-span-2">Nom</div>
-            <div>Taux</div>
-            <div>Calcul</div>
-            <div>Durée max</div>
-            <div>Validation</div>
-            <div>Action</div>
-          </div>
-          {loadingR ? (
-            <p className="text-gray-500 text-center py-10">Chargement...</p>
-          ) : rubriques.map(r => (
-            <div key={r.id}
-              className="grid grid-cols-7 gap-3 px-4 py-3 border-b border-[#2e3a50] last:border-0 items-center hover:bg-[#1e2535]/50 transition text-sm">
-              <div className="col-span-2">
-                <p className="text-white font-medium">{r.nom}</p>
-                <p className="text-xs text-gray-500">
-                  Plafond : {r.plafond
-                    ? `${parseFloat(r.plafond).toLocaleString('fr-FR')} F`
-                    : 'Illimité'}
-                </p>
+     {tab === 'rubriques' && (
+            <div className="bg-[#161b27] border border-[#2e3a50] rounded-xl overflow-hidden">
+              {/* En-tête — desktop seulement */}
+              <div className="hidden md:grid grid-cols-7 gap-3 px-4 py-3 bg-[#1e2535] text-xs text-gray-500 font-mono uppercase tracking-wider">
+                <div className="col-span-2">Nom</div>
+                <div>Taux</div>
+                <div>Calcul</div>
+                <div>Durée max</div>
+                <div>Validation</div>
+                <div>Action</div>
               </div>
-              <div className="text-amber-400 font-mono">
-                {(parseFloat(r.taux_interet) * 100).toFixed(1)}%
-              </div>
-              <div className="text-gray-400 capitalize">{r.mode_calcul_interet}</div>
-              <div className="text-gray-400">{r.duree_max_seances} séances</div>
-              <div>
-                <span className={`px-2 py-1 rounded-md text-xs font-mono
-                  ${r.validation_requise === 'automatique'
-                    ? 'bg-green-900/40 text-green-400'
-                    : 'bg-blue-900/40 text-blue-400'}`}>
-                  {r.validation_requise}
-                </span>
-              </div>
-              <div>
-                <button
-                  onClick={() => { setSelectedRubrique(r); setShowRubriqueModal(true); }}
-                  className="text-gray-400 hover:text-blue-400 transition">
-                  <Pencil size={14} />
-                </button>
-              </div>
+              {loadingR ? (
+                <p className="text-gray-500 text-center py-10">Chargement...</p>
+              ) : rubriques.map(r => (
+                <div key={r.id}
+                  className="border-b border-[#2e3a50] last:border-0 hover:bg-[#1e2535]/50 transition">
+
+                  {/* Carte mobile */}
+                  <div className="md:hidden p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-white font-medium text-sm truncate">{r.nom}</p>
+                      <button onClick={() => { setSelectedRubrique(r); setShowRubriqueModal(true); }}
+                        className="text-gray-400 hover:text-blue-400 transition flex-shrink-0 ml-2">
+                        <Pencil size={14} />
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500 mb-1">
+                      Plafond : {r.plafond ? `${parseFloat(r.plafond).toLocaleString('fr-FR')} F` : 'Illimité'}
+                    </p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-amber-400 font-mono text-xs">
+                        {(parseFloat(r.taux_interet) * 100).toFixed(1)}%
+                      </span>
+                      <span className="text-gray-500 text-xs capitalize">{r.mode_calcul_interet}</span>
+                      <span className="text-gray-500 text-xs">{r.duree_max_seances} séances</span>
+                      <span className={`text-xs px-1.5 py-0.5 rounded font-mono ${
+                        r.validation_requise === 'automatique'
+                          ? 'bg-green-900/40 text-green-400'
+                          : 'bg-blue-900/40 text-blue-400'}`}>
+                        {r.validation_requise}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Ligne desktop */}
+                  <div className="hidden md:grid grid-cols-7 gap-3 px-4 py-3 items-center text-sm">
+                    <div className="col-span-2">
+                      <p className="text-white font-medium">{r.nom}</p>
+                      <p className="text-xs text-gray-500">
+                        Plafond : {r.plafond ? `${parseFloat(r.plafond).toLocaleString('fr-FR')} F` : 'Illimité'}
+                      </p>
+                    </div>
+                    <div className="text-amber-400 font-mono">
+                      {(parseFloat(r.taux_interet) * 100).toFixed(1)}%
+                    </div>
+                    <div className="text-gray-400 capitalize">{r.mode_calcul_interet}</div>
+                    <div className="text-gray-400">{r.duree_max_seances} séances</div>
+                    <div>
+                      <span className={`px-2 py-1 rounded-md text-xs font-mono ${
+                        r.validation_requise === 'automatique'
+                          ? 'bg-green-900/40 text-green-400'
+                          : 'bg-blue-900/40 text-blue-400'}`}>
+                        {r.validation_requise}
+                      </span>
+                    </div>
+                    <div>
+                      <button onClick={() => { setSelectedRubrique(r); setShowRubriqueModal(true); }}
+                        className="text-gray-400 hover:text-blue-400 transition">
+                        <Pencil size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          )}
       {/* DÉDUCTIONS */}
         {tab === 'deductions' && (
           <div>
