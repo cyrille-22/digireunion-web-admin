@@ -23,6 +23,10 @@ const updateTontine = (id, data) => api.put(`/tontines/${id}`, data);
 const getRubriques = () => api.get('/pret-rubriques').then(r => r.data);
 const createRubrique = (data) => api.post('/pret-rubriques', data);
 const updateRubrique = (id, data) => api.put(`/pret-rubriques/${id}`, data);
+const supprimerTontine = (id) =>
+  api.delete(`/tontines/${id}`);
+const supprimerRubrique = (id) =>
+  api.delete(`/prets/rubriques/${id}`);
 
 // ── MODAL TONTINE ─────────────────────────────────────────────
 function TontineModal({ tontine, onClose, onSave }) {
@@ -702,53 +706,45 @@ const deleteMutation = useMutation({
     <div>
       {/* Header */}
       {/* Header avec bouton conditionnel selon l'onglet */}
-<div className="flex items-center justify-between mb-6">
-  <div>
-    <h1 className="text-2xl font-bold text-white">Configuration</h1>
-    <p className="text-gray-400 text-sm mt-1">
-      Tontines · Rubriques de prêts · Déductions
-    </p>
-  </div>
-  {/* Bouton conditionnel */}
-  {tab === 'tontines' && (
-    <button
-      onClick={() => { setSelectedTontine(null); setShowTontineModal(true); }}
-      className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700
-        text-white px-4 py-2.5 rounded-xl font-medium transition">
-      <Plus size={16} /> Nouvelle tontine
-    </button>
-  )}
-  {tab === 'rubriques' && (
-    <button
-      onClick={() => { setSelectedRubrique(null); setShowRubriqueModal(true); }}
-      className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700
-        text-white px-4 py-2.5 rounded-xl font-medium transition">
-      <Plus size={16} /> Nouvelle rubrique
-    </button>
-  )}
-  
-</div>
-
+    <div className="mb-6">
+      <h1 className="text-xl md:text-2xl font-bold text-white">
+        Configuration
+      </h1>
+      <p className="text-gray-400 text-xs md:text-sm mt-1">
+        Tontines · Rubriques de prêts · Déductions
+      </p>
+    </div>
+    {tab === 'rubriques' && (
+        <button
+          onClick={() => { setSelectedRubrique(null); setShowRubriqueModal(true); }}
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700
+            text-white px-4 py-2.5 rounded-xl font-medium transition">
+          <Plus size={16} /> Nouvelle rubrique
+        </button>
+      )}
       {/* Tabs */}
 
-      <div className="flex gap-1 bg-[#1e2535] p-1 rounded-xl mb-6 w-fit">
-        {[
-          ['tontines',   `Tontines (${tontines.length})`],
-          ['rubriques',  `Rubriques prêts (${rubriques.length})`],
-          ['deductions', `Déductions (${deductions.length})`],
-        ].map(([key, label]) => (
+      <div className="grid grid-cols-3 gap-1 bg-[#1e2535] p-1 rounded-xl mb-6">
+            {[
+              ['tontines',  `Tontines (${tontines.length})`],
+              ['rubriques', `Rubriques (${rubriques.length})`],
+              ['deductions',`Déductions (${deductions.length})`],
+            ].map(([key, label]) => (
           <button key={key} onClick={() => setTab(key)}
-            className={`px-5 py-2 rounded-lg text-sm font-medium transition ${
-              tab === key
-                ? 'bg-[#161b27] text-white shadow'
-                : 'text-gray-400 hover:text-white'}`}>
+            className={`px-2 py-2 rounded-lg text-xs md:text-sm font-medium transition truncate ${tab === key
+              ? 'bg-[#161b27] text-white shadow'
+              : 'text-gray-400 hover:text-white'}`}>
             {label}
           </button>
         ))}
       </div>           
       {/* TONTINES */}
       {tab === 'tontines' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="space-y-3">
+          <button onClick={() => setShowTontineModal(true)}
+            className="w-full md:w-auto flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-medium transition text-sm">
+            <Plus size={16} /> Nouvelle tontine
+          </button>
           {loadingT ? (
             <p className="text-gray-500 col-span-2 text-center py-10">Chargement...</p>
           ) : tontines.map(t => (
@@ -818,6 +814,10 @@ const deleteMutation = useMutation({
       {/* RUBRIQUES */}
      {tab === 'rubriques' && (
             <div className="bg-[#161b27] border border-[#2e3a50] rounded-xl overflow-hidden">
+              <button onClick={() => setShowRubriqueModal(true)}
+                className="w-full md:w-auto flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-medium transition text-sm m-3">
+                <Plus size={16} /> Nouvelle rubrique
+              </button>
               {/* En-tête — desktop seulement */}
               <div className="hidden md:grid grid-cols-7 gap-3 px-4 py-3 bg-[#1e2535] text-xs text-gray-500 font-mono uppercase tracking-wider">
                 <div className="col-span-2">Nom</div>
@@ -895,25 +895,16 @@ const deleteMutation = useMutation({
       {/* DÉDUCTIONS */}
         {tab === 'deductions' && (
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <p className="text-sm text-gray-400">
-                  Ces déductions sont automatiquement proposées
-                  lors du bénéfice (bouffer)
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  setSelectedDeduction(null);
-                  setShowDeductionModal(true);
-                }}
-                className="flex items-center gap-2 bg-blue-600
-                  hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl
-                  font-medium transition">
+            
+            <div className="space-y-3 mb-4">
+              <button onClick={() => setShowDeductionModal(true)}
+                className="w-full md:w-auto flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-medium transition text-sm">
                 <Plus size={16} /> Nouvelle déduction
               </button>
+              <p className="text-xs text-gray-500">
+                Ces déductions sont automatiquement proposées lors du bénéfice (bouffer)
+              </p>
             </div>
-
             {deductions.length === 0 ? (
               <div className="bg-[#161b27] border border-[#2e3a50]
                 rounded-xl p-10 text-center">
@@ -987,6 +978,20 @@ const deleteMutation = useMutation({
                         }}
                         className="text-gray-400 hover:text-red-400
                           transition">
+                        <Trash2 size={14} />
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (!window.confirm(`Supprimer la tontine "${t.nom}" ?`)) return;
+                          try {
+                            await supprimerTontine(t.id);
+                            toast.success('Tontine supprimée');
+                            queryClient.invalidateQueries(['tontines']);
+                          } catch (err) {
+                            toast.error(err.response?.data?.message || 'Erreur');
+                          }
+                        }}
+                        className="text-gray-400 hover:text-red-400 transition">
                         <Trash2 size={14} />
                       </button>
                     </div>

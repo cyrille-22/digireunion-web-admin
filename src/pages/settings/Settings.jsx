@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
+import { Building2, Users, Calendar, Phone, Mail, MapPin, Shield, BarChart3, Check, Pencil, Trash2 } from 'lucide-react';
 import {
   Building2, Users, Calendar, Phone,
   Mail, MapPin, Shield, BarChart3,
@@ -15,7 +16,14 @@ const updateParametres = (data) =>
   api.put('/parametres', data);
 const getStats = () =>
   api.get('/parametres/stats').then(r => r.data);
-
+const toggleStatutMembre = (id) =>
+  api.patch(`/members/${id}/statut`);
+const supprimerMembre = (id) =>
+  api.delete(`/members/${id}`);
+const reinitialiserAssociation = (confirmation) =>
+  api.post('/parametres/reinitialiser', { confirmation });
+const getMembres = () =>
+  api.get('/members').then(r => r.data);
 // ── STAT CARD ─────────────────────────────────────────────────
 function StatCard({ icon: Icon, title, value, subtitle, color }) {
   const colors = {
@@ -43,7 +51,55 @@ function StatCard({ icon: Icon, title, value, subtitle, color }) {
     </div>
   );
 }
+function ReinitialisationForm() {
+  const [confirmation, setConfirmation] = useState('');
+  const [loading, setLoading] = useState(false);
 
+  const handleReinit = async () => {
+    if (confirmation !== 'REINITIALISER') {
+      toast.error('Tapez exactement REINITIALISER');
+      return;
+    }
+    if (!window.confirm(
+      'Dernière confirmation : voulez-vous vraiment ' +
+      'tout réinitialiser ? Cette action est irréversible.'
+    )) return;
+
+    setLoading(true);
+    try {
+      await api.post('/parametres/reinitialiser', { confirmation });
+      toast.success('✅ Association réinitialisée !');
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Erreur');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div>
+      <label className="block text-xs text-gray-400 mb-2">
+        Tapez <span className="text-red-400 font-mono font-bold">
+          REINITIALISER
+        </span> pour confirmer
+      </label>
+      <input type="text" value={confirmation}
+        onChange={e => setConfirmation(e.target.value)}
+        placeholder="REINITIALISER"
+        className="w-full bg-[#1e2535] border border-red-800/50
+          rounded-xl px-4 py-3 text-white placeholder-gray-600
+          focus:outline-none focus:border-red-500 mb-3 font-mono" />
+      <button onClick={handleReinit}
+        disabled={loading || confirmation !== 'REINITIALISER'}
+        className="w-full bg-red-600 hover:bg-red-700 text-white
+          py-3 rounded-xl font-semibold transition
+          disabled:opacity-40 disabled:cursor-not-allowed">
+        {loading ? 'Réinitialisation...' : '🗑️ Réinitialiser tout'}
+      </button>
+    </div>
+  );
+}
 export default function Settings() {
   const [tab, setTab]         = useState('profil');
   const [editing, setEditing] = useState(false);
@@ -53,7 +109,11 @@ export default function Settings() {
     queryKey: ['parametres'],
     queryFn: getParametres
   });
-
+    const { data: membresData } = useQuery({
+      queryKey: ['membres-settings'],
+      queryFn: getMembres
+    });
+    const membres = membresData?.membres || [];
   const { data: statsData } = useQuery({
     queryKey: ['stats'],
     queryFn: getStats
@@ -112,39 +172,37 @@ export default function Settings() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-white">
+      <div className="mb-6">
+        <div className="flex items-center justify-between gap-3 mb-1">
+          <h1 className="text-xl md:text-2xl font-bold text-white truncate">
             Paramètres
           </h1>
-          <p className="text-gray-400 text-sm mt-1">
-            Configuration de {p.nom}
-          </p>
+          {!editing && tab === 'profil' && (
+            <button onClick={initForm}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-xl text-sm font-medium transition flex-shrink-0">
+              <Pencil size={14} /> Modifier
+            </button>
+          )}
         </div>
-        {!editing && tab === 'profil' && (
-          <button onClick={initForm}
-            className="flex items-center gap-2 bg-blue-600
-              hover:bg-blue-700 text-white px-4 py-2.5
-              rounded-xl font-medium transition">
-            <Pencil size={16} /> Modifier
-          </button>
-        )}
+        <p className="text-gray-400 text-xs md:text-sm truncate">
+          Configuration de {p.nom}
+        </p>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-[#1e2535] p-1 rounded-xl
-        mb-6 w-fit">
+     <div className="grid grid-cols-3 gap-1 bg-[#1e2535] p-1 rounded-xl mb-6">
         {[
           ['profil',  '🏢 Profil'],
           ['roles',   '👥 Rôles'],
-          ['stats',   '📊 Statistiques'],
+          ['membres', '👤 Membres'],
+          ['stats',   '📊 Stats'],
+          ['danger',  '⚠️ Zone danger'],
         ].map(([key, label]) => (
           <button key={key}
             onClick={() => { setTab(key); setEditing(false); }}
-            className={`px-5 py-2 rounded-lg text-sm font-medium
-              transition ${tab === key
-                ? 'bg-[#161b27] text-white shadow'
-                : 'text-gray-400 hover:text-white'}`}>
+            className={`px-2 py-2 rounded-lg text-xs md:text-sm font-medium transition truncate ${tab === key
+              ? 'bg-[#161b27] text-white shadow'
+              : 'text-gray-400 hover:text-white'}`}>
             {label}
           </button>
         ))}
@@ -554,7 +612,98 @@ export default function Settings() {
           </div>
         </div>
       )}
+      {/* ── MEMBRES ── */}
+      {tab === 'membres' && (
+        <div className="bg-[#161b27] border border-[#2e3a50] rounded-xl overflow-hidden">
+          <div className="p-4 border-b border-[#2e3a50]">
+            <h2 className="text-sm font-semibold text-white mb-1">
+              Gestion des membres
+            </h2>
+            <p className="text-xs text-gray-500">
+              Activez/désactivez ou supprimez des membres.
+              Le président ne peut pas être modifié ici.
+            </p>
+          </div>
+          {membres.map(m => (
+            <div key={m.id}
+              className="flex items-center gap-3 px-4 py-3 border-b border-[#2e3a50] last:border-0">
+              <div className="w-9 h-9 rounded-full bg-blue-900/40 text-blue-400
+                flex items-center justify-center text-xs font-bold flex-shrink-0">
+                {m.nom_complet.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-white text-sm font-medium truncate">
+                  {m.nom_complet}
+                </p>
+                <p className="text-xs text-gray-500 capitalize">
+                  {m.role} · {m.telephone}
+                </p>
+              </div>
+              {m.role !== 'president' && (
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={async () => {
+                      try {
+                        await toggleStatutMembre(m.id);
+                        toast.success('Statut mis à jour !');
+                        queryClient.invalidateQueries(['membres-settings']);
+                      } catch (err) {
+                        toast.error(err.response?.data?.message || 'Erreur');
+                      }
+                    }}
+                    className={`text-xs px-2 py-1 rounded-md font-mono ${
+                      m.statut === 'actif'
+                        ? 'bg-green-900/40 text-green-400'
+                        : 'bg-red-900/40 text-red-400'}`}>
+                    {m.statut === 'actif' ? 'Actif' : 'Inactif'}
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!window.confirm(
+                        `Supprimer définitivement ${m.nom_complet} ?`
+                      )) return;
+                      try {
+                        await supprimerMembre(m.id);
+                        toast.success('Membre supprimé');
+                        queryClient.invalidateQueries(['membres-settings']);
+                      } catch (err) {
+                        toast.error(err.response?.data?.message || 'Erreur');
+                      }
+                    }}
+                    className="text-gray-400 hover:text-red-400 transition">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              )}
+              {m.role === 'president' && (
+                <span className="text-xs bg-blue-900/40 text-blue-400
+                  px-2 py-1 rounded-md font-mono flex-shrink-0">
+                  Protégé
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
+      {/* ── ZONE DANGER ── */}
+      {tab === 'danger' && (
+        <div className="space-y-4">
+          <div className="bg-red-900/10 border border-red-800/30 rounded-xl p-5">
+            <h2 className="text-sm font-semibold text-red-400 mb-2 flex items-center gap-2">
+              ⚠️ Réinitialiser l'association
+            </h2>
+            <p className="text-xs text-gray-400 mb-4 leading-relaxed">
+              Cette action supprime DÉFINITIVEMENT toutes les tontines,
+              rubriques, séances, cotisations, prêts et membres
+              (sauf le président). Utilisez ceci uniquement pour
+              repartir de zéro sur la configuration. Cette action est
+              irréversible.
+            </p>
+            <ReinitialisationForm />
+          </div>
+        </div>
+      )}
       {/* ── STATISTIQUES ── */}
       {tab === 'stats' && (
         <div className="space-y-4">

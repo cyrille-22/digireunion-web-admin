@@ -289,7 +289,7 @@ function OuvertureModal({ membres, seancePrecedente, onClose, onOuvrir }) {
               />
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-3 mt-3 pt-3 border-t border-[#2e3a50] flex-shrink-0">
               {seancePrecedente && (
                 <button
                   onClick={() => setStep(1)}
@@ -407,7 +407,7 @@ function CotisationModal({ seanceId, tontines, onClose, onDone }) {
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-      <div className="bg-[#161b27] border border-[#2e3a50] rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] flex flex-col">
+      <div className="bg-[#161b27] border border-[#2e3a50] rounded-2xl p-4 md:p-6 w-full max-w-2xl max-h-[85vh] flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base md:text-lg font-semibold text-white">
             {selectedTontine ? `Cotisation — ${selectedTontine.nom}` : 'Choisir la tontine'}
@@ -513,7 +513,7 @@ function CotisationModal({ seanceId, tontines, onClose, onDone }) {
             </div>
 
             {/* Liste membres */}
-            <div className="flex-1 overflow-y-auto space-y-2 mb-4">
+            <div className="flex-1 overflow-y-auto space-y-2 pb-2 -mx-1 px-1">
               {[...cotisations].sort((a, b) => {
                     if (a.deja_enregistre !== b.deja_enregistre) return a.deja_enregistre ? 1 : -1;
                     if (a.en_retard !== b.en_retard) return a.en_retard ? -1 : 1;
@@ -588,7 +588,7 @@ function CotisationModal({ seanceId, tontines, onClose, onDone }) {
               ))}
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-3 mt-3 pt-3 border-t border-[#2e3a50] flex-shrink-0">
               <button
                 onClick={() => setSelectedTontine(null)}
                 className="bg-[#1e2535] border border-[#2e3a50] text-gray-400 px-4 py-3 rounded-xl hover:text-white transition flex items-center gap-2"
@@ -743,7 +743,7 @@ function BilanModal({ seanceId, onClose, onCloturer }) {
           )}
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex gap-3 mt-3 pt-3 border-t border-[#2e3a50] flex-shrink-0">
           <button onClick={onClose}
             className="flex-1 bg-[#1e2535] border border-[#2e3a50] text-gray-400 py-3 rounded-xl hover:text-white transition">
             Continuer la séance
@@ -854,7 +854,7 @@ function CloturModal({ seance, caisse, onClose, onDone }) {
             </div>
           )}
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 mt-3 pt-3 border-t border-[#2e3a50] flex-shrink-0">
             <button type="button" onClick={onClose}
               className="flex-1 bg-[#1e2535] border border-[#2e3a50] text-gray-400 py-3 rounded-xl hover:text-white transition">
               Annuler
@@ -2062,7 +2062,7 @@ function BoufferModal({ seanceId, membres, tontines, onClose, onDone }) {
                 })}
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 mt-3 pt-3 border-t border-[#2e3a50] flex-shrink-0">
                 <button onClick={() => setStep(1)}
                   className="flex items-center gap-2 bg-[#1e2535]
                     border border-[#2e3a50] text-gray-400 px-4 py-3
@@ -2356,7 +2356,7 @@ function BoufferModal({ seanceId, membres, tontines, onClose, onDone }) {
                   </div>
 
                   {/* Boutons */}
-                  <div className="flex gap-3">
+                  <div className="flex gap-3 mt-3 pt-3 border-t border-[#2e3a50] flex-shrink-0">
                     <button onClick={() => setStep(2)}
                       className="flex items-center gap-2 bg-[#1e2535]
                         border border-[#2e3a50] text-gray-400 px-4 py-3
