@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
-import { Building2, Users, Calendar, Phone, Mail, MapPin, Shield, BarChart3, Check, Pencil, Trash2 } from 'lucide-react';
+import { Building2, Users, Calendar, Phone, Mail, MapPin, Shield, BarChart3, Check, Pencil } from 'lucide-react';
 import {
   Building2, Users, Calendar, Phone,
   Mail, MapPin, Shield, BarChart3,
